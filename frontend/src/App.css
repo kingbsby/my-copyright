@@ -1,3 +1,4 @@
+
 .pixel-board {
   display: inline-block;
   width: 100%;
@@ -34,4 +35,37 @@
   animation-timing-function: linear;
   background: #333;
   background: linear-gradient(to bottom, #333 0%, #116611 4%, #55ff55 8%, #116611 12%, #333 16%);
+}
+
+
+.img_list > li {
+  list-style: none;
+  float: left;
+  width: 200px;
+  margin-right: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.img_list > li > p {
+  line-height: 1;
+  margin-bottom: 6px;
+
+}
+
+.img_list > li > .name {
+  margin-top: 10px;
+  font-size: 16px;
+  
+}
+
+.img_list > li > .owner {
+  font-size: 14px;
+  color: #333;
+}
+
+.img_list > li > .price {
+  font-size: 20px;
+  color: red;
+  margin-bottom: 10px;
 }

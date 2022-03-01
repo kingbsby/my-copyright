@@ -1,217 +1,256 @@
-import "./App.css";
-import React from 'react';
-// import BN from 'bn.js';
-import * as nearAPI from 'near-api-js'
-import Big from 'big.js';
+import React, { useEffect, useState } from 'react'
+import {
+  Form,
+  Input,
+  Button,
+  Image,
+  Divider,
+  message,
+} from 'antd'
+import {
+  keyStores,
+  connect,
+  WalletConnection,
+  Contract,
+} from 'near-api-js'
 
-const TGas = Big(10).pow(12);
-const BoatOfGas = Big(200).mul(TGas);
+import Big from 'big.js'
 
-// const ContractName = 'dev-1629962930296-20948195726082';
-// const ContractName = 'dev-1630033758756-26263481745179';
-const ContractName = 'dev-1645961674780-63177548277627';
+import "./App.css"
+import 'antd/dist/antd.css'
 
-class App extends React.Component {
-  constructor(props) {
-    super(props);
+const ContractName = 'dev-1646049663373-27224220280109'
 
-    this.state = {
-      connected: false,
-      signedIn: false,
-      accountId: null,
-      digitals: [],
-      all_digitals: [],
-      own_digital: "",
-      target_digital: "",
-      levelup_target:""
-    };
+const TGas = Big(10).pow(12)
+const BoatOfGas = Big(200).mul(TGas)
 
-    this._digitalRefreshTimer = null;
-
-
-    this.handleLevelUpTargetChange = this.handleLevelUpTargetChange.bind(this);
-    this.levelupSubmit = this.levelupSubmit.bind(this);
-
-    this.handleOwnChange = this.handleOwnChange.bind(this);
-    this.handleTargetChange = this.handleTargetChange.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
-
-    this._initNear().then(() => {
-      this.setState({
-        connected: true,
-        signedIn: !!this._accountId,
-        accountId: this._accountId,
-      });
-    });
-  }
-
-  componentDidMount() {
-  }
-
-
-  async query_digitals() {
-    let digitals = await this._contract.get_digitals({ accountId: this._accountId })
-    let all_digitals = await this._contract.get_all_digitals({ accountId: this._accountId })
-    this.setState({
-      digitals: digitals,
-      all_digitals: all_digitals,
-    })
-  }
-
-  async refreshAccountStats() {
-    let digitals = await this._contract.get_digitals({ accountId: this._accountId });
-    let all_digitals = await this._contract.get_all_digitals({ accountId: this._accountId })
-    if (this._digitalRefreshTimer) {
-      clearInterval(this._digitalRefreshTimer);
-      this._digitalRefreshTimer = null;
-    }
-
-    this.setState({
-      digitals: digitals,
-      all_digitals: all_digitals,
-    });
-
-    // this._digitalRefreshTimer = setInterval(() => {
-    //   this.query_digitals();
-    // }, 100);
-  }
+let _keyStore,
+  _nearConfig,
+  _near,
+  _accountId,
+  _account,
+  _contract,
+  _walletConnection
 
 
 
-  async _initNear() {
+export default () => {
+
+  const [imgList, setImgList] = useState([])
+  const [connected, setConnected] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
+  const [accountId, setAccountId] = useState(null)
+  const [submitLoding, setSubmitLoding] = useState(false)
+  const [buyLoding, setBuyLoding] = useState(false)
+
+  const [form] = Form.useForm()
+
+  useEffect(() => {
+    _initNear()
+  }, [])
+
+  /**
+   * 初始化near
+   */
+  const _initNear = async () => {
+
     const nearConfig = {
       networkId: 'default',
       nodeUrl: 'https://rpc.testnet.near.org',
       contractName: ContractName,
       walletUrl: 'https://wallet.testnet.near.org',
-    };
-    const keyStore = new nearAPI.keyStores.BrowserLocalStorageKeyStore();
-    const near = await nearAPI.connect(Object.assign({ deps: { keyStore } }, nearConfig));
-    this._keyStore = keyStore;
-    this._nearConfig = nearConfig;
-    this._near = near;
+    }
 
-    this._walletConnection = new nearAPI.WalletConnection(near, ContractName);
-    this._accountId = this._walletConnection.getAccountId();
+    const keyStore = new keyStores.BrowserLocalStorageKeyStore()
 
-    this._account = this._walletConnection.account();
-    this._contract = new nearAPI.Contract(this._account, ContractName, {
+    const near = await connect(Object.assign({ deps: { keyStore } }, nearConfig))
+
+    _keyStore = keyStore
+    _nearConfig = nearConfig
+    _near = near
+
+    _walletConnection = new WalletConnection(near, ContractName)
+
+    _accountId = _walletConnection.getAccountId()
+
+    _account = _walletConnection.account()
+
+    _contract = new Contract(_account, ContractName, {
       viewMethods: ['get_list'],
       changeMethods: ['add_picture', 'buy'],
-    });
-    if (this._accountId) {
-      await this.refreshAccountStats();
+    })
+
+    setConnected(true)
+    setSignedIn(!!_accountId)
+    setAccountId(_accountId)
+
+    if (_accountId) {
+      await getList()
     }
   }
 
+  /**
+   * 获取列表数据
+   */
+  const getList = async () => {
+    const list = await _contract.get_list()
+    setImgList(list)
+  }
 
-  async requestSignIn() {
-    const appTitle = 'Digital War';
-    await this._walletConnection.requestSignIn(
+  /**
+   * 登录
+   */
+  const requestSignIn = async () => {
+    const appTitle = 'Digital War'
+    await _walletConnection.requestSignIn(
       ContractName,
       appTitle
     )
   }
 
-  async logOut() {
-    this._walletConnection.signOut();
-    this._accountId = null;
-    this.setState({
-      signedIn: !!this._accountId,
-      accountId: this._accountId,
+  /**
+   * 登出
+   */
+  const logOut = async () => {
+    _walletConnection.signOut()
+    _accountId = null
+
+    setSignedIn(false)
+    setAccountId(null)
+
+  }
+
+  /**
+   * 上传作品
+   */
+  const onFinish = async ({ opus_name, opus_url, opus_hash, price }) => {
+    if (submitLoding) return
+    setSubmitLoding(true)
+
+    const pic = await _contract.add_picture({
+      opus_name,
+      opus_url,
+      opus_hash,
+      price: parseInt(price)
     })
+
+    setSubmitLoding(false)
+
+    if (pic === 'success') {
+      message.success('图片添加成功!')
+      form.resetFields()
+      getList()
+    }
   }
 
-  async addFirst() {
-    let res = await this._contract.add_first();
-    alert(res);
-    window.location.reload()
+  /**
+   * 购买
+   * @param {*} img 
+   * @returns 
+   */
+  const buy = (img) => {
+
+    if (buyLoding) return
+
+    setBuyLoding(true)
+
+    _contract.buy({ pic_hash: img.opus_hash }, BoatOfGas.toFixed(0), Big(img.price).mul(1).toFixed(0))
+
   }
 
-  async pk_action(){
-    let res = await this._contract.pk({own_digital: parseInt(this.state.own_digital, 10), target_digital: parseInt(this.state.target_digital, 10)})
-    // alert('own_digital: ' + this.state.own_digital  + ',target_digital: ' + this.state.target_digital);
-    alert(res)
-    window.location.reload()
-  }
-
-  handleOwnChange(event) {    this.setState({own_digital: event.target.value});  }
-  handleTargetChange(event) {    this.setState({target_digital: event.target.value});  }
-  handleSubmit(event) {
-    this.pk_action();
-    event.preventDefault();
-  }
-
-  async action_levelup(){
-    let res = await this._contract.levelup({digital: parseInt(this.state.levelup_target, 10)}, BoatOfGas.toFixed(0), Big(10000000000).mul(TGas).toFixed(0))
-    // alert('own_digital: ' + this.state.own_digital  + ',target_digital: ' + this.state.target_digital);
-    alert(res)
-    window.location.reload()
-  }
-
-  handleLevelUpTargetChange(event) {    this.setState({levelup_target: event.target.value});  }
-
-  levelupSubmit(event) {
-    this.action_levelup();
-    event.preventDefault();
-  }
-
-
-  render() {
-    const content = !this.state.connected ? (
-      <div>Connecting... <span className="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span></div>
-    ) : (this.state.signedIn ? (
-      <div>
-        <div className="float-right">
-          <button
-            className="btn btn-outline-secondary"
-            onClick={() => this.logOut()}>Log out</button>
-        </div>
-        <h4>Hello, <span className="font-weight-bold">{this.state.accountId}</span>!</h4>
-
-        <form onSubmit={this.levelupSubmit}>
-          <label> digital: <input type="text" style={{marginLeft:"74px"}} value={this.state.levelup_target} onChange={(event) => {this.handleLevelUpTargetChange(event)}} /> </label><br/>
-          <input type="submit" value="levelup" />
-        </form>
-        <hr></hr>
-        <form onSubmit={this.handleSubmit}>
-          <label> challenger: <input type="text" style={{marginLeft:"44px"}} value={this.state.own_digital} onChange={(event) => {this.handleOwnChange(event)}} /> </label><br/>
-          <label> challenge target: <input type="text" value={this.state.target_digital} onChange={(event) => {this.handleTargetChange(event)}} /> </label><br/>
-          <input type="submit" value="challenge" />
-        </form>
-        <hr></hr>
-        <div>
-          Your digitals:
-          <ul>
-            {this.state.digitals.length !== 0 ?
-              (this.state.digitals.map(value => <li key={value}> {value}</li>)) :
-              (<button className="btn btn-primary" onClick={() => this.addFirst()}>Get first digital</button>)}
-          </ul>
-        </div>
-        <hr></hr>
-        <div>
-          Digital Pool:
-          <ul>
-            {this.state.all_digitals.length !== 0 ?
-              (this.state.all_digitals.map(value => <li style={{whiteSpace: "pre"}} key={value.digital}> Digital：{value.digital}       Owner：{value.owner}       Level：{value.level}</li>)) :
-              (<div>暂无</div>)}
-          </ul>
-        </div>
-      </div>
-    ) : (
-      <div style={{ marginBottom: "10px" }}>
+  const signedInDom = (
+    <>
+      <div className="float-right">
         <button
-          className="btn btn-primary"
-          onClick={() => this.requestSignIn()}>Log in with NEAR Wallet</button>
+          className="btn btn-outline-secondary"
+          onClick={logOut}>Log out</button>
       </div>
-    ));
-    return (
-      <div className="px-5">
-        <h1>Digital War</h1>
-        {content}
-      </div>
-    );
-  }
-}
+      <h4>Hello, <span className="font-weight-bold">{accountId}</span>!</h4>
+      <Divider dashed />
+      <Form wrapperCol={{ span: 14 }} form={form} onFinish={onFinish}>
+        <Form.Item
+          label="图片名称"
+          name="opus_name"
+          rules={[{ required: true, message: '请输入图片名称' }]}>
+          <Input placeholder="请输入图片名称" />
+        </Form.Item>
+        <Form.Item
+          label="图片路径"
+          name="opus_url"
+          rules={[{ required: true, message: '请输入图片路径' }]}>
+          <Input placeholder="请输入图片路径" />
+        </Form.Item>
+        <Form.Item
+          label="图片hash"
+          name="opus_hash"
+          rules={[{ required: true, message: '请输入图片hash' }]}>
+          <Input placeholder="请输入图片hash" />
+        </Form.Item>
+        <Form.Item
+          label="图片价格"
+          name="price"
+          rules={[{ required: true, message: '请输入图片价格' }]}>
+          <Input placeholder="请输入图片价格" />
+        </Form.Item>
+        <Form.Item >
+          <Button
+            type="primary"
+            htmlType="submit"
+            loading={submitLoding}
+          >Submit</Button>
+        </Form.Item>
+      </Form>
+      <Divider dashed />
+      <ul className='img_list'>
+        {
+          imgList.map((img, i) => {
+            return (
+              <li key={i}>
+                <Image
+                  width={200}
+                  height={200}
+                  fallback="data:image/png;base64,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"
+                  src={img.opus_url}
+                />
+                <p className='name'>{img.opus_name}</p>
+                <p className='owner'>{img.owner}</p>
+                <p className='price'>{img.price}</p>
+                {
+                  img.owner === accountId
+                    ? <Button disabled>购买</Button>
+                    : <Button loading={buyLoding} onClick={() => buy(img)}>购买</Button>
+                }
+              </li>
+            )
+          })
+        }
+      </ul>
+    </>
+  )
 
-export default App;
+  const content = !connected
+    ? (
+      <div>
+        Connecting...
+        <span className="spinner-grow spinner-grow-sm" role="status" aria-hidden="true"></span>
+      </div>
+    )
+    : (
+      signedIn
+        ? signedInDom
+        : (
+          <div style={{ marginBottom: "10px" }}>
+            <button
+              className="btn btn-primary"
+              onClick={requestSignIn}>Log in with NEAR Wallet</button>
+          </div>
+        )
+    )
+
+  return (
+    <div className="px-5">
+      <h1>COPYRIGHT</h1>
+      {content}
+    </div>
+  )
+}
