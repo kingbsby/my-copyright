@@ -71,11 +71,16 @@ impl PictureStore {
             Some(r) => r,
             None => return "Picture not exists".to_string()
         };
+        if pic.owner == account_id {
+            return "You cannot buy your own paintings".to_string();
+        }
+
         let price = pic.price;
         println!("pic price {}, buy price {}", price, env::attached_deposit());
 
-        assert!(env::attached_deposit() == price, "Incorrect price");
+        assert!(env::attached_deposit() == price, "Incorrect price : accountId {}, pic price {}, buy price {}",account_id, price, env::attached_deposit());
         pic.owner = account_id;
+        self.picture_list.insert(&pic_hash, &pic);
         "Successful purchase".to_string()
     }
 }
@@ -111,10 +116,10 @@ mod tests {
 
     #[test]
     fn test_repeat_add_picture() {
-        let mut context = get_context("pic.test".to_string(), 3_600_000_000_000);
+        let context = get_context("pic.test".to_string(), 3_600_000_000_000);
         testing_env!(context.clone());
         let mut picture_store = PictureStore::new();
-        let a : String = picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
+        picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
 
         assert_eq!(picture_store.add_picture("asdsd".to_string(), "asds".to_string(), "123456".to_string(), 100)
         , "The picture already exists".to_string());
@@ -123,6 +128,7 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = r#"Incorrect price"#)]
     fn test_repeat_pay_failed() {
         let mut context = get_context("pic1.test".to_string(), 3_600_000_000_000);
         testing_env!(context.clone());
