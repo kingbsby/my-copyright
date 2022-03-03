@@ -101,7 +101,7 @@ export default () => {
    * 登录
    */
   const requestSignIn = async () => {
-    const appTitle = 'Digital War'
+    const appTitle = 'My copyright'
     await _walletConnection.requestSignIn(
       ContractName,
       appTitle
