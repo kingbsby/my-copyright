@@ -3,10 +3,6 @@ near demo picture store
 
 ## concept
 
-The contract provides digital capture, digital upgrade and digital challenge capabilities.
-
-Use the first digital you get for free to get your favorite lucky number through the challenge.
-
 ## Getting Started
 
 1、clone this repo
