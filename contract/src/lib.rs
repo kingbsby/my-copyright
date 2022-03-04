@@ -29,6 +29,7 @@ impl Picture {
 #[near_bindgen]
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct PictureStore {
+    pub unit:u128,
     pub picture_list: UnorderedMap<String, Picture>
 }
 
@@ -38,10 +39,13 @@ pub trait Transac {
 
 #[near_bindgen]
 impl PictureStore {
+
+
     #[init]
     pub fn new() -> Self {
         assert!(!env::state_exists(), "Already initialized");
         Self {
+            unit: 1_000_000_000_000_000_000_000,   // 0.001near
             picture_list: UnorderedMap::new(b"a".to_vec()),
         }
     }
@@ -70,7 +74,7 @@ impl PictureStore {
 
     pub fn pay_seller(&mut self, account_id : AccountId, amount : u128) -> Promise {
         Promise::new(account_id.parse().unwrap())
-            .transfer(amount)
+            .transfer(amount * self.unit)
     }
 
 
@@ -88,8 +92,9 @@ impl PictureStore {
         // get price and check deposit
         let price = pic.price;
         println!("pic price {}, buy price {}", price, env::attached_deposit());
-        assert!(env::attached_deposit() == price, "Incorrect price : accountId {}, pic price {}, buy price {}",buy_account_id, price, env::attached_deposit());
-        
+        // assert!(env::attached_deposit() == price, "Incorrect price : accountId {}, pic price {}, buy price {}",buy_account_id, price, env::attached_deposit());
+        assert!(env::attached_deposit() == price * self.unit, "Incorrect price");
+
         // transfer near to seller
         // Promise::new(sell_account_id).transfer(price);
         println!("curr account {}, to account {}, price {}", &buy_account_id, &sell_account_id, &price);
@@ -131,34 +136,34 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_repeat_add_picture() {
-    //     let context = get_context("pic.test".to_string(), 3_600_000_000_000);
-    //     testing_env!(context.clone());
-    //     let mut picture_store = PictureStore::new();
-    //     picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
+    #[test]
+    fn test_repeat_add_picture() {
+        let context = get_context("pic.test".to_string(), 3_600_000_000_000);
+        testing_env!(context.clone());
+        let mut picture_store = PictureStore::new();
+        picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
 
-    //     assert_eq!(picture_store.add_picture("asdsd".to_string(), "asds".to_string(), "123456".to_string(), 100)
-    //     , "The picture already exists".to_string());
-    //     assert_eq!(picture_store.add_picture("werwer".to_string(), "asds".to_string(), "213555".to_string(), 100)
-    //     , "success".to_string());
-    // }
+        assert_eq!(picture_store.add_picture("asdsd".to_string(), "asds".to_string(), "123456".to_string(), 100)
+        , "The picture already exists".to_string());
+        assert_eq!(picture_store.add_picture("werwer".to_string(), "asds".to_string(), "213555".to_string(), 100)
+        , "success".to_string());
+    }
 
-    // #[test]
-    // #[should_panic(expected = r#"Access does not exist."#)]
-    // fn test_repeat_pay_failed() {
-    //     let mut context = get_context("pic1.test".to_string(), 3_600_000_000_000);
-    //     testing_env!(context.clone());
-    //     let mut picture_store = PictureStore::new();
-    //     let a : String = picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
-    //     println!("add asd:{}", a);
-    //     context.signer_account_id = "pic2.text".to_string();
-    //     context.attached_deposit = 50;
-    //     testing_env!(context.clone());
-    //     let re = picture_store.buy("123456".to_string());
-    //     // println!("buy result:{}", re);
-    //     // assert_eq!(re, "Incorrect price");
-    // }
+    #[test]
+    #[should_panic(expected = r#"Incorrect price"#)]
+    fn test_repeat_pay_failed() {
+        let mut context = get_context("pic1.test".to_string(), 3_600_000_000_000);
+        testing_env!(context.clone());
+        let mut picture_store = PictureStore::new();
+        let a : String = picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
+        println!("add asd:{}", a);
+        context.signer_account_id = "pic2.text".to_string();
+        context.attached_deposit = 50;
+        testing_env!(context.clone());
+        picture_store.buy("123456".to_string());
+        // println!("buy result:{}", re);
+        // assert_eq!(re, "Incorrect price");
+    }
 
     #[test]
     fn test_repeat_pay_success() {
@@ -170,8 +175,8 @@ mod tests {
         println!("seller before : {}", env::account_balance());
 
         context.signer_account_id = "pic2.text".to_string();
-        context.account_balance = 10000u128;
-        context.attached_deposit = 1000;
+        context.account_balance = 9_000_000_000_000_000_000_000_000u128;
+        context.attached_deposit = 1000 * 1_000_000_000_000_000_000_000;
         testing_env!(context.clone());
         picture_store.buy("123456".to_string());
         println!("buyer after : {}", env::account_balance());

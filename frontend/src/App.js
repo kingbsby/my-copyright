@@ -19,7 +19,7 @@ import Big from 'big.js'
 import "./App.css"
 import 'antd/dist/antd.css'
 
-const ContractName = 'dev-1646049663373-27224220280109'
+const ContractName = 'dev-1646380030414-48199219332522'
 
 const TGas = Big(10).pow(12)
 const BoatOfGas = Big(200).mul(TGas)
@@ -154,7 +154,7 @@ export default () => {
 
     setBuyLoding(true)
 
-    _contract.buy({ pic_hash: img.opus_hash }, BoatOfGas.toFixed(0), Big(img.price).mul(1).toFixed(0))
+    _contract.buy({ pic_hash: img.opus_hash }, BoatOfGas.toFixed(0), Big(img.price).mul(1000000000000000000000).toFixed(0))
 
   }
 
