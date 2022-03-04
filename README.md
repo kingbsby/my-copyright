@@ -11,7 +11,7 @@ Use the first digital you get for free to get your favorite lucky number through
 
 1、clone this repo
 ```shell
-git clone https://github.com/MagicGordon/digital-war
+git clone https://github.com/kingbsby/my-copyright
 ```
 
 2、run frontend
