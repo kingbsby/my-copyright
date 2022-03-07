@@ -19,7 +19,7 @@ import Big from 'big.js'
 import "./App.css"
 import 'antd/dist/antd.css'
 
-const ContractName = 'dev-1646380030414-48199219332522'
+const ContractName = 'dev-1646638387266-60312233632745'
 
 const TGas = Big(10).pow(12)
 const BoatOfGas = Big(200).mul(TGas)
@@ -138,6 +138,10 @@ export default () => {
 
     if (pic === 'success') {
       message.success('图片添加成功!')
+      form.resetFields()
+      getList()
+    } else if (pic === 'The Picture already exists') {
+      message.success('图片已存在，无法修改其他用户图片')
       form.resetFields()
       getList()
     }

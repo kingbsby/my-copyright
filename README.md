@@ -2,6 +2,8 @@
 near demo picture store
 
 ## concept
+This contract provides the function of a picture store. Users can upload and purchase pictures. The picture uses hash as the unique identifier. The same user uploads the same hash picture as a modification operation. Different users cannot modify other users' pictures, nor can they buy their own pictures. .
+ps: it will be changed to nft later
 
 ## Getting Started
 

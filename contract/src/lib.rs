@@ -33,13 +33,8 @@ pub struct PictureStore {
     pub picture_list: UnorderedMap<String, Picture>
 }
 
-pub trait Transac {
-    fn pay(&mut self) -> String;
-}
-
 #[near_bindgen]
 impl PictureStore {
-
 
     #[init]
     pub fn new() -> Self {
@@ -61,18 +56,25 @@ impl PictureStore {
     pub fn add_picture(&mut self, opus_name: String, opus_url: String, opus_hash: String, price: u128) -> String{
         let account_id= env::signer_account_id();
 
-        let pic = Picture::new(account_id, opus_name, opus_url, opus_hash, price);
-
-        match self.picture_list.get(&pic.opus_hash) {
-            Some(_r) => return "The picture already exists".to_string(),
-            None =>  "The picture not exists".to_string()
+        let pic_curr = self.picture_list.get(&opus_hash);
+        let updated_pic = match pic_curr {
+            Some(r) => {
+                if account_id != r.owner && opus_hash == r.opus_hash {
+                    None
+                }else{
+                    Some(Picture::new(account_id, opus_name, opus_url, opus_hash, price))
+                }
+            },
+            None =>  Some(Picture::new(account_id, opus_name, opus_url, opus_hash, price))
         };
 
-        self.picture_list.insert(&pic.opus_hash, &pic);
-        "success".to_string()
+        match updated_pic {
+            Some(r) => {self.picture_list.insert(&r.opus_hash, &r); "success".to_string()}
+            None => "The Picture already exists".to_string()
+        }
     }
 
-    pub fn pay_seller(&mut self, account_id : AccountId, amount : u128) -> Promise {
+    fn pay_seller(&mut self, account_id : AccountId, amount : u128) -> Promise {
         Promise::new(account_id.parse().unwrap())
             .transfer(amount * self.unit)
     }
@@ -137,16 +139,36 @@ mod tests {
     }
 
     #[test]
-    fn test_repeat_add_picture() {
+    fn test_first_add_picture() {
         let context = get_context("pic.test".to_string(), 3_600_000_000_000);
         testing_env!(context.clone());
         let mut picture_store = PictureStore::new();
-        picture_store.add_picture("asd".to_string(), "asds".to_string(), "123456".to_string(), 100);
 
-        assert_eq!(picture_store.add_picture("asdsd".to_string(), "asds".to_string(), "123456".to_string(), 100)
-        , "The picture already exists".to_string());
         assert_eq!(picture_store.add_picture("werwer".to_string(), "asds".to_string(), "213555".to_string(), 100)
         , "success".to_string());
+    }
+
+    #[test]
+    fn test_second_add_picture() {
+        let context = get_context("pic.test".to_string(), 3_600_000_000_000);
+        testing_env!(context.clone());
+        let mut picture_store = PictureStore::new();
+        picture_store.add_picture("pic1".to_string(), "pic1_url".to_string(), "123456".to_string(), 100);
+
+        assert_eq!(picture_store.add_picture("pic2".to_string(), "pic2_url".to_string(), "123456".to_string(), 200)
+        , "success".to_string());
+    }
+
+    #[test]
+    fn test_add_picture_existed() {
+        let mut context = get_context("user1.test".to_string(), 3_600_000_000_000);
+        testing_env!(context.clone());
+        let mut picture_store = PictureStore::new();
+        picture_store.add_picture("pic1".to_string(), "pic1_url".to_string(), "123456".to_string(), 100);
+        context.signer_account_id = "user2.test".to_string();
+        testing_env!(context.clone());
+        assert_eq!(picture_store.add_picture("pic2".to_string(), "pic2_url".to_string(), "123456".to_string(), 200)
+        , "The Picture already exists".to_string());
     }
 
     #[test]
